@@ -1378,6 +1378,12 @@ const PHOTOS = [
 
 const AUDIO_SRC = "./sound/05.Mayehrmneesh_Mennak.mp3";
 
+// ابدأ تحميل الصوت فوراً في الخلفية
+(function() {
+  var a = document.getElementById('bg-audio');
+  a.load();
+})();
+
 /* ═══════════════════════════════════════════════════════════════
    PARTICLES
 ═══════════════════════════════════════════════════════════════ */
@@ -1532,20 +1538,17 @@ function openSurprise() {
   }, 1300);
 
   // ── الصوت يشتغل فوراً من الدقيقة 2 مع fade in ──
-  audio.src          = AUDIO_SRC;
   audio.volume       = 0;
   audio.playbackRate = 1.0;
-  audio.currentTime  = 0;
+  audio.currentTime  = 120;
 
   var playPromise = audio.play();
   if (playPromise !== undefined) {
     playPromise.then(function() {
-      audio.currentTime = 120;
       document.getElementById('play-pause-btn').textContent = '⏸';
       document.getElementById('player-bars').classList.remove('paused');
       fadeIn(audio, 0.75, 2500);
     }).catch(function() {
-      // لو المتصفح منعه، بيستنى canplay
       audio.addEventListener('canplay', function onReady() {
         audio.removeEventListener('canplay', onReady);
         audio.currentTime = 120;
