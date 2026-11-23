@@ -1151,8 +1151,8 @@ body {
 <div id="hearts-container"></div>
 
 <!-- ░░░ AUDIO ░░░ -->
-<audio id="bg-audio" loop preload="metadata">
-  <source src="sound/05.Mayehrmneesh_Mennak.mp3" type="audio/mpeg" />
+<audio id="bg-audio" loop preload="none">
+  <source src="./sound/05.Mayehrmneesh_Mennak.mp3" type="audio/mpeg" />
 </audio>
 
 <!-- ░░░ OPENING SCREEN ░░░ -->
@@ -1362,21 +1362,21 @@ body {
    ASSETS — discovered from folder
 ═══════════════════════════════════════════════════════════════ */
 const PHOTOS = [
-  { src: "images/1.jpeg",  caption: "لحظة مش هتتنسى" },
-  { src: "images/2.jpeg",  caption: "مع بعض في كل حاجة" },
-  { src: "images/3.jpeg",  caption: "بسمة بتنور كل حاجة" },
-  { src: "images/4.jpeg",  caption: "كل التفاصيل حلوة" },
-  { src: "images/5.jpeg",  caption: "فرحة مكتوبة على وشها" },
-  { src: "images/6.jpeg",  caption: "ذكرى محفورة في الوقت" },
-  { src: "images/9.jpeg",  caption: "هادية وجميلة" },
-  { src: "images/11.jpeg", caption: "مش هتتنسى أبداً" },
-  { src: "images/12.jpeg", caption: "أحلى مع كل يوم" },
-  { src: "images/WhatsApp Image 2026-11-23 at 6.19.42 PM.jpeg",    caption: "يوم ما يتعوضش" },
-  { src: "images/WhatsApp Image 2026-11-23 at 6.19.42 PM (1).jpeg", caption: "لحظة من القلب" },
-  { src: "images/WhatsApp Image 2026-11-23 at 6.19.42 PM (2).jpeg", caption: "جمال مش عادي" },
+  { src: "./images/1.jpeg",   caption: "لحظة مش هتتنسى" },
+  { src: "./images/2.jpeg",   caption: "مع بعض في كل حاجة" },
+  { src: "./images/3.jpeg",   caption: "بسمة بتنور كل حاجة" },
+  { src: "./images/4.jpeg",   caption: "كل التفاصيل حلوة" },
+  { src: "./images/5.jpeg",   caption: "فرحة مكتوبة على وشها" },
+  { src: "./images/6.jpeg",   caption: "ذكرى محفورة في الوقت" },
+  { src: "./images/9.jpeg",   caption: "هادية وجميلة" },
+  { src: "./images/11.jpeg",  caption: "مش هتتنسى أبداً" },
+  { src: "./images/12.jpeg",  caption: "أحلى مع كل يوم" },
+  { src: "./images/WhatsApp%20Image%202026-11-23%20at%206.19.42%20PM.jpeg",     caption: "يوم ما يتعوضش" },
+  { src: "./images/WhatsApp%20Image%202026-11-23%20at%206.19.42%20PM%20(1).jpeg", caption: "لحظة من القلب" },
+  { src: "./images/WhatsApp%20Image%202026-11-23%20at%206.19.42%20PM%20(2).jpeg", caption: "جمال مش عادي" },
 ];
 
-const AUDIO_SRC = "sound/05.Mayehrmneesh_Mennak.mp3";
+const AUDIO_SRC = "./sound/05.Mayehrmneesh_Mennak.mp3";
 
 /* ═══════════════════════════════════════════════════════════════
    PARTICLES
@@ -1500,26 +1500,34 @@ function openSurprise() {
     main.classList.add('visible');
     player.classList.add('show');
 
-    // ── Smooth continuous auto-scroll — nothing can pause it ──
-    const SPEED = 55; // px per second
-    let last = null;
+    // ── Auto-scroll: يمشي لوحده، لو المستخدم سكرول بيوقف وبيكمل بعد 2 ثانية ──
+    var SPEED   = 90;   // px per second — عدّل هنا للسرعة
+    var last    = null;
+    var paused  = false;
+    var resumeTimer = null;
 
     function step(ts) {
-      if (last !== null) {
+      if (last !== null && !paused) {
         main.scrollTop += SPEED * (ts - last) / 1000;
         if (main.scrollTop >= main.scrollHeight - main.clientHeight) {
-          main.scrollTop = 0; // loop back to top
+          main.scrollTop = 0;
         }
       }
       last = ts;
       requestAnimationFrame(step);
     }
-
     requestAnimationFrame(step);
 
-    // Block wheel & touch-scroll so only the rAF drives movement
-    main.addEventListener('wheel',      e => e.preventDefault(), { passive: false });
-    main.addEventListener('touchmove',  e => e.preventDefault(), { passive: false });
+    function pauseScroll() {
+      paused = true;
+      last   = null;
+      clearTimeout(resumeTimer);
+      resumeTimer = setTimeout(function() { paused = false; }, 2000);
+    }
+
+    main.addEventListener('wheel',      pauseScroll, { passive: true });
+    main.addEventListener('touchstart', pauseScroll, { passive: true });
+    main.addEventListener('touchmove',  pauseScroll, { passive: true });
 
   }, 1300);
 
@@ -1600,22 +1608,37 @@ function setVolume(v) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   GALLERY — grid builder
+   GALLERY — grid builder with lazy loading
 ═══════════════════════════════════════════════════════════════ */
 (function buildGallery() {
   var grid = document.getElementById('gallery-grid');
 
-  PHOTOS.forEach(function(photo, i) {
-    var parts   = photo.src.split('/');
-    var safeSrc = parts.slice(0, -1).join('/') + '/' + encodeURIComponent(parts[parts.length - 1]);
+  // IntersectionObserver للـ lazy load الحقيقي
+  var imgObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        var img = entry.target;
+        img.src = img.dataset.src;
+        img.removeAttribute('data-src');
+        imgObserver.unobserve(img);
+      }
+    });
+  }, { root: document.getElementById('main-content'), rootMargin: '200px' });
 
+  PHOTOS.forEach(function(photo, i) {
     var item = document.createElement('div');
     item.className = 'g-item';
 
     var img = document.createElement('img');
-    img.src     = safeSrc;
-    img.alt     = photo.caption;
-    img.loading = 'lazy';
+    // أول 4 صور تتحمل فوراً، الباقي lazy
+    if (i < 4) {
+      img.src = photo.src;
+    } else {
+      img.dataset.src = photo.src;
+      img.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+      imgObserver.observe(img);
+    }
+    img.alt = photo.caption;
 
     var overlay = document.createElement('div');
     overlay.className = 'g-overlay';
@@ -1646,21 +1669,19 @@ function closeLightbox() {
 }
 
 function showPhoto() {
-  const img     = document.getElementById('lightbox-img');
-  const counter = document.getElementById('lb-counter');
-  const p       = PHOTOS[currentPhoto];
+  var img     = document.getElementById('lightbox-img');
+  var counter = document.getElementById('lb-counter');
+  var p       = PHOTOS[currentPhoto];
   img.style.opacity   = '0';
   img.style.transform = 'scale(0.9)';
-  setTimeout(() => {
-    const parts   = p.src.split('/');
-    const safe    = parts.slice(0, -1).join('/') + '/' + encodeURIComponent(parts[parts.length - 1]);
-    img.src = safe;
+  setTimeout(function() {
+    img.src = p.src;
     img.alt = p.caption;
     img.style.transition = 'opacity 0.3s, transform 0.3s';
     img.style.opacity    = '1';
     img.style.transform  = 'scale(1)';
   }, 150);
-  counter.textContent = `${currentPhoto + 1} / ${PHOTOS.length}`;
+  counter.textContent = (currentPhoto + 1) + ' / ' + PHOTOS.length;
 }
 
 function nextPhoto() {
